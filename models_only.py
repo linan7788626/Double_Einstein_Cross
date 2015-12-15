@@ -3,6 +3,7 @@ import pylab as pl
 import pyfits
 #import scipy.ndimage.filters as snf
 import scipy.signal as ss
+import triangle_root_finding as trf
 #--------------------------------------------------------------------
 def make_r_coor(nc,dsx):
 
@@ -108,30 +109,11 @@ def main():
     nnn = 128
     #dsx = boxsize/nnn
     dsx = 0.05 # arcsec
-    boxsize = dsx*nnn # in the units of Einstein Radius
+    bsz = dsx*nnn # in the units of Einstein Radius
 
-    xx01 = np.linspace(-boxsize/2.0,boxsize/2.0,nnn)+0.5*dsx
-    xx02 = np.linspace(-boxsize/2.0,boxsize/2.0,nnn)+0.5*dsx
+    xx01 = np.linspace(-bsz/2.0,bsz/2.0,nnn)+0.5*dsx
+    xx02 = np.linspace(-bsz/2.0,bsz/2.0,nnn)+0.5*dsx
     xi2,xi1 = np.meshgrid(xx01,xx02)
-    #----------------------------------------------------------------------
-    g1_amp = 100.0       # peak brightness value
-    g1_sig = 0.0001    # Gaussian "sigma" (i.e., size)
-    g1_xcen = 0.1   # x position of center (also try (0.0,0.14)
-    g1_ycen = 0.03    # y position of center
-    g1_axrat = 1.0   # minor-to-major axis ratio
-    g1_pa = 0.0      # major-axis position angle (degrees) c.c.w. from x axis
-    g1par = np.asarray([g1_amp,g1_sig,g1_xcen,g1_ycen,g1_axrat,g1_pa])
-    #----------------------------------------------------------------------
-    g2_amp = 100.0       # peak brightness value
-    g2_sig = 0.0001    # Gaussian "sigma" (i.e., size)
-    g2_xcen = 0.03   # x position of center (also try (0.0,0.14)
-    g2_ycen = 0.1    # y position of center
-    g2_axrat = 1.0   # minor-to-major axis ratio
-    g2_pa = 0.0      # major-axis position angle (degrees) c.c.w. from x axis
-    g2par = np.asarray([g2_amp,g2_sig,g2_xcen,g2_ycen,g2_axrat,g2_pa])
-    #----------------------------------------------------------------------
-    #g_source = 0.0*xi1
-    #g_source = gauss_2d(xi1,xi2,gpar) # modeling source as 2d Gaussian with input parameters.
     #----------------------------------------------------------------------
     xc1 = 0.0       #x coordinate of the center of lens (in units of Einstein radius).
     xc2 = 0.0       #y coordinate of the center of lens (in units of Einstein radius).
@@ -142,15 +124,38 @@ def main():
     lpar = np.asarray([xc1,xc2,q,rc,re,pha])
     #----------------------------------------------------------------------
     ai1,ai2,mua = lens_equation_sie(xi1,xi2,lpar)
-    yi1 = xi1-ai1
-    yi2 = xi2-ai2
-    #----------------------------------------------------------------------
+    #yi1 = xi1-ai1
+    #yi2 = xi2-ai2
 
+    mags_of_sources = 100.0
+    ys1 = 0.03
+    ys2 = 0.1
 
-    #gpar = np.asarray([g_amp,g_sig,g_xcen,g_ycen,g_axrat,g_pa])
-    g_limage = gauss_2d(yi1,yi2,g1par)+gauss_2d(yi1,yi2,g2par)
-    g_limage = g_limage*100000000.0
+    xroot1,xroot2,nroots = trf.roots_zeros(xi1,xi2,ai1,ai2,ys1,ys2)
 
+    idr1 = ((np.array(xroot1)+bsz/2.0-dsx/2.0)/dsx).astype('int')
+    idr2 = ((np.array(xroot2)+bsz/2.0-dsx/2.0)/dsx).astype('int')
+    g_limage = xi1*0.0
+    g_limage[idr1,idr2] = mags_of_sources*np.abs(mua[idr1,idr2])
+
+    ys1 = 0.03
+    ys2 = 0.01
+
+    xroot1,xroot2,nroots = trf.roots_zeros(xi1,xi2,ai1,ai2,ys1,ys2)
+
+    idr1 = ((np.array(xroot1)+bsz/2.0-dsx/2.0)/dsx).astype('int')
+    idr2 = ((np.array(xroot2)+bsz/2.0-dsx/2.0)/dsx).astype('int')
+    g_limage[idr1,idr2] = g_limage[idr1,idr2] + mags_of_sources*np.abs(mua[idr1,idr2])
+
+    pl.figure()
+    pl.contourf(g_limage)
+    pl.colorbar()
+    #print xroot1,xroot2
+    #pl.figure(figsize=(10,10))
+    #pl.xlim(-2.0,2.0)
+    #pl.ylim(-2.0,2.0)
+    #pl.plot(xroot1,xroot2,'go')
+    #pl.plot(ys1,ys2,'ko')
     #----------------------------------------------------------------------
     g_amp = 0.1*re      # peak brightness value
     g_sig = 300.*re      # Gaussian "sigma" (i.e., size)
@@ -164,9 +169,9 @@ def main():
     g_lensimage = gauss_2d(xi1,xi2,gpar)
     g_limage = g_limage + g_lensimage
 
-    pl.figure()
-    pl.contourf(g_lensimage)
-    pl.colorbar()
+    #pl.figure()
+    #pl.contourf(g_lensimage)
+    #pl.colorbar()
 
     file_psf = "./sdsspsf.fits"
     g_psf = pyfits.getdata(file_psf)-1000.0

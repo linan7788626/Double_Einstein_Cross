@@ -5,12 +5,7 @@ import pylab as pl
 #from scipy.ndimage.filters import gaussian_filter
 from scipy.ndimage.filters import maximum_filter
 from scipy.ndimage.morphology import generate_binary_structure, binary_erosion
-import scipy.optimize as sco
-
-#class triangle_vector(ind):
-    #def __init__(self, ind):
-
-        #<`0`>
+#import scipy.optimize as sco
 
 def build_triangles(xgrids1,xgrids2):
 
@@ -284,37 +279,12 @@ def lens_galaxies(xi1,xi2,glpar):
 
     return g_lens
 
-def root_finding(x_guess,xlc1,xlc2,re0,rc0,ql0,phi0,y10,y20):
-    def simple_lensing_equation(x):
-        y = x*0.0
-        y[0],y[1] = nie_all(x[0],x[1],xlc1,xlc2,re0,rc0,ql0,phi0,y10,y20)[9:]
-        return [y[0],y[1]]
+def roots_zeros(xi1,xi2,ai1,ai2,ys1,ys2):
 
-    sol = sco.root(simple_lensing_equation,[x_guess[0],x_guess[1]],method='krylov')
-    #,options={'xtol':1e-9})
-    # 'anderson','hybr','lm','broyden1','broyden2','anderson','linearmixing','diagbroyden','excitingmixing','krylov','df-sane'
-    return sol.x
-
-def roots_zeros(xb1,xb2,xl1,xl2,bsz,nnn,ys1,ys2):
-
-    ql0 = 0.699999999999
-    rc0 = 0.100000000000
-    re0 = 1.0
-
-    xi1,xi2 = standard_grids(xb1,xb2,bsz,nnn)
-    alpha1,alpha2 = nie_alphas(xi1,xi2,xl1,xl2,re0,rc0,ql0)
-    yi1 = xi1-alpha1
-    yi2 = xi2-alpha2
-
+    yi1 = xi1-ai1
+    yi2 = xi2-ai2
 
     xroot1,xroot2,nroots = mapping_triangles(ys1,ys2,xi1,xi2,yi1,yi2)
-
-    #pl.figure(figsize=(10,10))
-    #pl.xlim(-2.0,2.0)
-    #pl.ylim(-2.0,2.0)
-    #pl.plot(yi1,yi2,'ro')
-    #pl.plot(xi1,xi2,'go')
-    #pl.plot(ys1,ys2,'ko')
 
     return xroot1,xroot2,nroots
 
@@ -341,9 +311,8 @@ def refine_roots(xb1,xb2,xl1,xl2,bsz,nnn,ys1,ys2):
 
     return xroot1,xroot2,nroots,dsx
 def main():
-    nnn = 32
+    nnn = 128
     bsz = 4.0
-    dsx = bsz/nnn
 
     xb1 = 0.0
     xb2 = 0.0
@@ -351,44 +320,26 @@ def main():
     xl1 = 0.0
     xl2 = 0.0
 
+    re0 = 1.0
+    rc0 = 0.0
+    ql0 = 0.7
+
     ys1 = np.random.random(1)*(0.2-0.1)+0.05
     ys2 = np.random.random(1)*(0.2-0.1)+0.05
-    print ys1,ys2,dsx
 
-    #ys1 = 0.09892207 #Fold images
-    #ys2 = 0.09783113 #Fold images
+    xi1,xi2 = standard_grids(xb1,xb2,bsz,nnn)
+    ai1,ai2 = nie_alphas(xi1,xi2,xl1,xl2,re0,rc0,ql0)
 
-    #ys1 = 0.14250078
-    #ys2 = 0.12287053
+    xroot1,xroot2,nroots = roots_zeros(xi1,xi2,ai1,ai2,ys1,ys2)
 
-    #xroot1,xroot2,nroots = refine_roots(xb1,xb2,xl1,xl2,bsz,nnn,ys1,ys2)
-    xroot1,xroot2,nroots = roots_zeros(xb1,xb2,xl1,xl2,bsz,nnn,ys1,ys2)
-
-    xfrt1=[]
-    xfrt2=[]
-    #print nroots,xroot1
-    for i in xrange(nroots):
-    #for i in xrange(1):
-        #i=0
-        xrt1,xrt2,nrts,dst = refine_roots(xroot1[i],xroot2[i],xl1,xl2,dsx*2.0,nnn,ys1,ys2)
-        print nrts,xrt1
-        for j in xrange(nrts):
-            xrtt1,xrtt2,nrtt,dstt = refine_roots(xrt1[j],xrt2[j],xl1,xl2,dst,nnn,ys1,ys2)
-            for k in xrange(nrtt):
-                xrttt1,xrttt2,nrttt,dsttt = refine_roots(xrtt1[k],xrtt2[k],xl1,xl2,dstt,nnn,ys1,ys2)
-
-        xfrt1.append(xrttt1)
-        xfrt2.append(xrttt2)
-        print i,xrttt1,xrttt2
-
-    #print xfrt1,xfrt2
-    #pl.figure(figsize=(10,10))
-    #pl.xlim(-2.0,2.0)
-    #pl.ylim(-2.0,2.0)
-    #pl.plot(xfrt1,xfrt2,'go')
-    #pl.plot(ys1,ys2,'ko')
+    print xroot1,xroot2
+    pl.figure(figsize=(10,10))
+    pl.xlim(-2.0,2.0)
+    pl.ylim(-2.0,2.0)
+    pl.plot(xroot1,xroot2,'go')
+    pl.plot(ys1,ys2,'ko')
     return 0
 
 if __name__ == '__main__':
     main()
-    #pl.show()
+    pl.show()
