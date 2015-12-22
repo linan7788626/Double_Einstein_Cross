@@ -4,6 +4,7 @@ import pyfits
 #import scipy.ndimage.filters as snf
 import scipy.signal as ss
 import triangle_root_finding as trf
+import alens_arr as aa
 #--------------------------------------------------------------------
 def make_r_coor(nc,dsx):
 
@@ -102,14 +103,19 @@ def de_vaucouleurs_2d(x,y,par):
 
 #--------------------------------------------------------------------
 def main():
-    #zl = 0.2
-    #zs = 1.0
-    #sigmav = 320           #km/s
+    zl = 0.173
+    zs = 2.5
+    sigmav = 520           #km/s
+    re0 = aa.re_sv(sigmav,zl,zs)
 
-    nnn = 128
+    nnn = 512
     #dsx = boxsize/nnn
     dsx = 0.05 # arcsec
     bsz = dsx*nnn # in the units of Einstein Radius
+
+    #nnn = 512
+    #bsz = 40 # in the units of Einstein Radius
+    #dsx = bsz/nnn # arcsec
 
     xx01 = np.linspace(-bsz/2.0,bsz/2.0,nnn)+0.5*dsx
     xx02 = np.linspace(-bsz/2.0,bsz/2.0,nnn)+0.5*dsx
@@ -119,7 +125,7 @@ def main():
     xc2 = 0.0       #y coordinate of the center of lens (in units of Einstein radius).
     q   = 0.7       #Ellipticity of lens.
     rc  = 0.1       #Core size of lens (in units of Einstein radius).
-    re  = 1.0       #Einstein radius of lens.
+    re  = re0       #Einstein radius of lens.
     pha = 45.0      #Orintation of lens.
     lpar = np.asarray([xc1,xc2,q,rc,re,pha])
     #----------------------------------------------------------------------
@@ -127,9 +133,11 @@ def main():
     #yi1 = xi1-ai1
     #yi2 = xi2-ai2
 
+    print re0
+
     mags_of_sources = 100.0
-    ys1 = 0.03
-    ys2 = 0.1
+    ys1 = 0.045#*re0
+    ys2 = 0.1*re0
 
     xroot1,xroot2,nroots = trf.roots_zeros(xi1,xi2,ai1,ai2,ys1,ys2)
 
@@ -138,8 +146,8 @@ def main():
     g_limage = xi1*0.0
     g_limage[idr1,idr2] = mags_of_sources*np.abs(mua[idr1,idr2])
 
-    ys1 = 0.03
-    ys2 = 0.01
+    ys1 = 0.1*re0
+    ys2 = 0.045#*re0
 
     xroot1,xroot2,nroots = trf.roots_zeros(xi1,xi2,ai1,ai2,ys1,ys2)
 
@@ -150,6 +158,10 @@ def main():
     pl.figure()
     pl.contourf(g_limage)
     pl.colorbar()
+
+    #pl.figure()
+    #pl.contour(yi1,yi2,mua)
+    #pl.colorbar()
     #print xroot1,xroot2
     #pl.figure(figsize=(10,10))
     #pl.xlim(-2.0,2.0)
@@ -195,14 +207,14 @@ def main():
     #pl.contourf(g_limage)
     #pl.colorbar()
 
-    g_limage = g_limage+g_noise
+    g_limage = g_limage#+g_noise
 
     output_filename = "./test.fits"
     pyfits.writeto(output_filename,g_limage,clobber=True)
 
-    pl.show()
 
     return 0
 #------------------------------------------------------------------------------
 if __name__ == '__main__':
     main()
+    pl.show()
