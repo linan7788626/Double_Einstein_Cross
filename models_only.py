@@ -5,6 +5,10 @@ import pyfits
 import scipy.signal as ss
 import triangle_root_finding as trf
 import alens_arr as aa
+import congrid
+import scipy.interpolate as sil
+from scipy.ndimage.filters import gaussian_filter
+
 #--------------------------------------------------------------------
 def make_r_coor(nc,dsx):
 
@@ -103,15 +107,29 @@ def de_vaucouleurs_2d(x,y,par):
 
 #--------------------------------------------------------------------
 def main():
-    zl = 0.173
-    zs = 2.5
-    sigmav = 520           #km/s
+    zl = 0.17
+    zs = 3.0
+    sigmav = 600           #km/s
     re0 = aa.re_sv(sigmav,zl,zs)
+    me0 = aa.m200_sv(sigmav,zl)
 
-    nnn = 512
+
+    #zs_arr = np.linspace(zl,10.0,100)
+    #re_arr = zs_arr*0.0
+    #for i in xrange(len(zs_arr)):
+        #re_arr[i] = aa.re_sv(sigmav,zl,zs_arr[i])
+
+    #pl.figure()
+    #pl.plot(zs_arr,re_arr,'-')
+
+
+
+    nrbins = 5
+    nnn = 128*nrbins
     #dsx = boxsize/nnn
-    dsx = 0.05 # arcsec
+    dsx = 0.396/nrbins # arcsec
     bsz = dsx*nnn # in the units of Einstein Radius
+    print re0,me0,bsz
 
     #nnn = 512
     #bsz = 40 # in the units of Einstein Radius
@@ -124,20 +142,26 @@ def main():
     xc1 = 0.0       #x coordinate of the center of lens (in units of Einstein radius).
     xc2 = 0.0       #y coordinate of the center of lens (in units of Einstein radius).
     q   = 0.7       #Ellipticity of lens.
-    rc  = 0.1       #Core size of lens (in units of Einstein radius).
+    rc  = 0.0       #Core size of lens (in units of Einstein radius).
     re  = re0       #Einstein radius of lens.
-    pha = 45.0      #Orintation of lens.
+    pha = 5.0      #Orintation of lens.
     lpar = np.asarray([xc1,xc2,q,rc,re,pha])
     #----------------------------------------------------------------------
     ai1,ai2,mua = lens_equation_sie(xi1,xi2,lpar)
-    #yi1 = xi1-ai1
-    #yi2 = xi2-ai2
+    yi1 = xi1-ai1
+    yi2 = xi2-ai2
 
-    print re0
+    #pl.figure()
+    #pl.contour(xi2,xi1,mua)
+    #pl.colorbar()
+
+    #pl.figure()
+    #pl.contour(yi2,yi1,mua)
+    #pl.colorbar()
 
     mags_of_sources = 100.0
-    ys1 = 0.045#*re0
-    ys2 = 0.1*re0
+    ys1 = 0.85
+    ys2 = -0.22
 
     xroot1,xroot2,nroots = trf.roots_zeros(xi1,xi2,ai1,ai2,ys1,ys2)
 
@@ -146,8 +170,8 @@ def main():
     g_limage = xi1*0.0
     g_limage[idr1,idr2] = mags_of_sources*np.abs(mua[idr1,idr2])
 
-    ys1 = 0.1*re0
-    ys2 = 0.045#*re0
+    ys1 = 0.67
+    ys2 = 0.75
 
     xroot1,xroot2,nroots = trf.roots_zeros(xi1,xi2,ai1,ai2,ys1,ys2)
 
@@ -155,9 +179,9 @@ def main():
     idr2 = ((np.array(xroot2)+bsz/2.0-dsx/2.0)/dsx).astype('int')
     g_limage[idr1,idr2] = g_limage[idr1,idr2] + mags_of_sources*np.abs(mua[idr1,idr2])
 
-    pl.figure()
-    pl.contourf(g_limage)
-    pl.colorbar()
+    #pl.figure()
+    #pl.contourf(g_limage)
+    #pl.colorbar()
 
     #pl.figure()
     #pl.contour(yi1,yi2,mua)
@@ -174,40 +198,47 @@ def main():
     g_xcen = xc1    # x position of center (also try (0.0,0.14)
     g_ycen = xc2    # y position of center
     g_axrat = q     # minor-to-major axis ratio
-    g_pa = pha      # major-axis position angle (degrees) c.c.w. from x axis
+    g_pa = pha+90      # major-axis position angle (degrees) c.c.w. from x axis
     gpar = np.asarray([g_amp,g_sig,g_xcen,g_ycen,g_axrat,g_pa])
     #----------------------------------------------------------------------
     #g_simage = gauss_2d(xi1,xi2,gpar) # modeling source as 2d Gaussian with input parameters.
     g_lensimage = gauss_2d(xi1,xi2,gpar)
-    g_limage = g_limage + g_lensimage
+    g_limage = g_limage + g_lensimage/3.0/nrbins**2.0
 
     #pl.figure()
     #pl.contourf(g_lensimage)
     #pl.colorbar()
 
-    file_psf = "./sdsspsf.fits"
-    g_psf = pyfits.getdata(file_psf)-1000.0
-    g_psf = g_psf/np.sum(g_psf)
+    #file_psf = "./sdsspsf.fits"
+    #g_psf = pyfits.getdata(file_psf)-1000.0
+    #g_psf = g_psf/np.sum(g_psf)
+
+    #g_psf = congrid.congrid(g_psf,[np.shape(g_psf)[0]*nrbins,np.shape(g_psf)[1]*nrbins])
+    #g_psf = sil.RectBivariateSpline(g_psf,
+                                #bbox=[np.shape(g_psf)[0]*nrbins,np.shape(g_psf)[1]*nrbins,np.shape(g_psf)[0]*nrbins,np.shape(g_psf)[1]*nrbins], kx=3, ky=3, s=0)
+
+    #print np.shape(g_psf),np.max(g_lensimage)
 
     #pl.figure()
     #pl.contourf(g_limage)
     #pl.colorbar()
 
 
-    file_noise = "./sdssgal.fits"
-    g_noise = pyfits.getdata(file_noise)-1000.0
+    #file_noise = "./sdssgal.fits"
+    #g_noise = pyfits.getdata(file_noise)-1000.0
+    #g_limage = ss.fftconvolve(g_limage,g_psf,mode="same")
 
-    #pl.figure()
-    #pl.contourf(g_noise)
+    #file_noise = "./sdssgal.fits"
+    #g_noise = pyfits.getdata(file_noise)-1000.0
+    nstd = 0.5001
+    g_noise=nstd*np.random.normal(0.0,1.0,(nnn,nnn))
+    g_limage = gaussian_filter(g_limage,5)
+
+    ##pl.figure()
+    ##pl.contourf(g_limage)
     #pl.colorbar()
 
-    g_limage = ss.fftconvolve(g_limage,g_psf,mode="same")
-
-    #pl.figure()
-    #pl.contourf(g_limage)
-    #pl.colorbar()
-
-    g_limage = g_limage#+g_noise
+    g_limage = g_limage+g_noise
 
     output_filename = "./test.fits"
     pyfits.writeto(output_filename,g_limage,clobber=True)
