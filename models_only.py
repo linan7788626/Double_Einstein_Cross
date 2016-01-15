@@ -163,6 +163,9 @@ def main():
     ys1 = 0.85
     ys2 = -0.22
 
+    ys11 = ys1
+    ys12 = ys2
+
     xroot1,xroot2,nroots = trf.roots_zeros(xi1,xi2,ai1,ai2,ys1,ys2)
 
     idr1 = ((np.array(xroot1)+bsz/2.0-dsx/2.0)/dsx).astype('int')
@@ -173,7 +176,16 @@ def main():
     ys1 = 0.67
     ys2 = 0.75
 
+    ys21 = ys1
+    ys22 = ys2
+
     xroot1,xroot2,nroots = trf.roots_zeros(xi1,xi2,ai1,ai2,ys1,ys2)
+
+    pl.figure()
+    pl.xlim(-bsz/2,bsz/2)
+    pl.ylim(-bsz/2,bsz/2)
+    pl.plot(ys11,ys12,'wo')
+    pl.plot(ys21,ys22,'yo')
 
     idr1 = ((np.array(xroot1)+bsz/2.0-dsx/2.0)/dsx).astype('int')
     idr2 = ((np.array(xroot2)+bsz/2.0-dsx/2.0)/dsx).astype('int')
@@ -219,9 +231,11 @@ def main():
 
     #print np.shape(g_psf),np.max(g_lensimage)
 
-    #pl.figure()
+    pl.figure()
     #pl.contourf(g_limage)
     #pl.colorbar()
+    pl.plot(ys11,ys12,'wo')
+    pl.plot(ys21,ys22,'yo')
 
 
     #file_noise = "./sdssgal.fits"
@@ -249,3 +263,5 @@ def main():
 if __name__ == '__main__':
     main()
     pl.show()
+    # Time Delay
+    #0.5*(1.0+0.17)/mm.vc*(mm.Da(0.17)*mm.Da(3.0)/mm.Da2(0.17,3.0))*mm.Mpc/1000.0*(20.0*2.0)/mm.apr**2.0/mm.yr * 365.0
